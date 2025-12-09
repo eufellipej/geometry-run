@@ -19,9 +19,22 @@ class Jogador:
         
         # Estado
         self.invencivel = False
+        self.tempo_invencivel = 0
+        self.duracao_invencibilidade = 90  # 1.5 segundos a 60 FPS
+        self.frame_count = 0
     
     def atualizar(self):
         """Atualiza a posição do jogador"""
+        # Atualizar invencibilidade
+        if self.invencivel:
+            self.tempo_invencivel += 1
+            if self.tempo_invencivel >= self.duracao_invencibilidade:
+                self.invencivel = False
+                self.tempo_invencivel = 0
+        
+        # Incrementar contador de frames
+        self.frame_count += 1
+        
         # Obter teclas pressionadas
         teclas = pygame.key.get_pressed()
         
@@ -60,9 +73,8 @@ class Jogador:
         
         # Desenhar jogador com efeito de invencibilidade
         if self.invencivel:
-            # Piscar quando invencível
-            import time
-            piscar = int(time.time() * 10) % 2
+            # Piscar quando invencível (mais rápido)
+            piscar = (self.frame_count // 5) % 2
             if piscar == 0:
                 cor_atual = self.cor
             else:
@@ -78,6 +90,20 @@ class Jogador:
                         (0, 0, self.tamanho, self.tamanho), 
                         3, border_radius=6)
         
+        # Efeito especial quando invencível
+        if self.invencivel:
+            # Anel de proteção
+            tempo_restante = self.duracao_invencibilidade - self.tempo_invencivel
+            raio = self.tamanho // 2 + 8 + int((tempo_restante / 30) * 5)
+            alpha = 100 + int((tempo_restante / self.duracao_invencibilidade) * 155)
+            
+            # Desenhar círculo de proteção
+            for i in range(3):
+                pygame.draw.circle(surf_jogador, 
+                                 (255, 255, 255, alpha // (i+1)), 
+                                 (self.tamanho//2, self.tamanho//2), 
+                                 raio + i*2, 1)
+        
         # Desenhar na tela
         self.tela.blit(surf_jogador, self.posicao)
     
@@ -85,11 +111,16 @@ class Jogador:
         """Retorna o retângulo de colisão"""
         return self.rect
     
-    def ativar_invencibilidade(self, tempo=None):
+    def ativar_invencibilidade(self, duracao=None):
         """Ativa invencibilidade temporária"""
         self.invencivel = True
+        self.tempo_invencivel = 0
+        if duracao is not None:
+            self.duracao_invencibilidade = duracao
     
     def resetar(self):
         """Reseta o jogador para a posição inicial"""
         self.posicao = [100, self.altura_tela // 2]
         self.invencivel = False
+        self.tempo_invencivel = 0
+        self.frame_count = 0
