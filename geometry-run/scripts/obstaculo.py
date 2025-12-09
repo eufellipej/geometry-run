@@ -6,13 +6,20 @@ class Obstaculo:
         self.tela = tela
         self.largura_tela = largura_tela
         self.altura_tela = altura_tela
-        self.fase = fase
+        self.fase = fase  # 1, 2 ou 3
         
         # Propriedades do obstáculo
         self.largura = random.randint(30, 80)
         self.altura = random.randint(60, 200)
         self.posicao = [largura_tela, 0]
-        self.velocidade = velocidade_base
+        
+        # Ajustar velocidade baseada na fase
+        if fase == 1:
+            self.velocidade = velocidade_base  # Normal (1.0x)
+        elif fase == 2:
+            self.velocidade = velocidade_base * 1.2  # Rápido (1.5x)
+        else:  # fase == 3
+            self.velocidade = velocidade_base * 1.5  # Extremo (2.0x)
         
         # Ajustar tamanho baseado na fase
         if fase >= 2:
@@ -80,10 +87,6 @@ class Obstaculo:
     def esta_fora_tela(self):
         """Verifica se o obstáculo saiu da tela"""
         return self.posicao[0] + self.largura < 0
-    
-    def aumentar_velocidade(self, incremento=0.1):
-        """Aumenta a velocidade do obstáculo"""
-        self.velocidade += incremento
 
 class GerenciadorObstaculos:
     def __init__(self, tela, largura_tela, altura_tela, velocidade_base=4):
@@ -95,18 +98,10 @@ class GerenciadorObstaculos:
         self.obstaculos = []
         self.tempo_ultimo_spawn = 0
         self.intervalo_spawn = 90  # frames
-        self.fase_atual = 1
+        self.fase_atual = 1  # Será atualizado pela partida
         
     def atualizar(self, pontuacao, multiplicador_velocidade=1.0):
         """Atualiza todos os obstáculos"""
-        # Atualizar fase baseado na pontuação
-        if pontuacao >= 100:
-            self.fase_atual = 3
-        elif pontuacao >= 50:
-            self.fase_atual = 2
-        else:
-            self.fase_atual = 1
-        
         # Atualizar obstáculos existentes
         for obstaculo in self.obstaculos[:]:
             obstaculo.atualizar(multiplicador_velocidade)
@@ -156,15 +151,8 @@ class GerenciadorObstaculos:
         self.obstaculos.append(obstaculo_inferior)
     
     def ajustar_dificuldade(self, pontuacao):
-        """Ajusta a dificuldade baseado na pontuação"""
-        # Aumentar velocidade base gradualmente
-        if pontuacao > 0 and pontuacao % 50 == 0:
-            # Aumento menor e controlado
-            self.velocidade_base += 0.2
-            for obstaculo in self.obstaculos:
-                obstaculo.aumentar_velocidade(0.1)
-        
-        # Diminuir intervalo de spawn gradualmente
+        """Ajusta a dificuldade baseado na pontuação (apenas para progressão dentro da fase)"""
+        # Diminuir intervalo de spawn gradualmente (mais obstáculos)
         if pontuacao > 0 and pontuacao % 100 == 0:
             self.intervalo_spawn = max(60, self.intervalo_spawn - 3)
     
@@ -185,4 +173,3 @@ class GerenciadorObstaculos:
         self.obstaculos.clear()
         self.tempo_ultimo_spawn = 0
         self.intervalo_spawn = 90
-        self.fase_atual = 1

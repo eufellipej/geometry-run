@@ -10,11 +10,11 @@ class GeometryRun:
         self.LARGURA = 800
         self.ALTURA = 600
         self.tela = pygame.display.set_mode((self.LARGURA, self.ALTURA))
-        pygame.display.set_caption("Geometry Run - Selecione sua Fase")
+        pygame.display.set_caption("Geometry Run - Escolha sua Fase")
         
-        # Cores para diferentes fases
+        # Cores para diferentes fases (cada fase tem sua própria paleta)
         self.CORES_FASES = [
-            {
+            {  # FASE 1 - Velocidade Normal (1.0x)
                 'fundo': (15, 20, 35),      # Azul escuro
                 'jogador': (0, 200, 255),
                 'obstaculo': (255, 100, 100),
@@ -23,7 +23,7 @@ class GeometryRun:
                 'botao': (40, 120, 180),
                 'botao_hover': (60, 160, 220)
             },
-            {
+            {  # FASE 2 - Velocidade Rápida (1.5x)
                 'fundo': (35, 15, 20),      # Vermelho escuro
                 'jogador': (100, 255, 200),
                 'obstaculo': (255, 200, 100),
@@ -32,7 +32,7 @@ class GeometryRun:
                 'botao': (180, 80, 100),
                 'botao_hover': (200, 100, 120)
             },
-            {
+            {  # FASE 3 - Velocidade Extrema (2.0x)
                 'fundo': (15, 35, 20),      # Verde escuro
                 'jogador': (255, 150, 50),
                 'obstaculo': (150, 100, 255),
@@ -57,7 +57,7 @@ class GeometryRun:
         
         # Dados persistentes
         self.high_score = 0
-        self.velocidade_selecionada = 1.0  # Padrão
+        self.fase_selecionada = 1  # Fase padrão (1 = 1.0x)
         
     def executar(self):
         """Loop principal do jogo"""
@@ -72,22 +72,27 @@ class GeometryRun:
                     if evento.key == pygame.K_ESCAPE:
                         # ESC volta para o menu de qualquer estado
                         if self.estado_atual == 'partida':
-                            self.estado_atual = 'menu'
-                            self.estados['menu'] = Menu(self.tela, self.LARGURA, self.ALTURA, self.CORES_FASES[0])
+                            self.estado_atual = 'selecao_fase'
+                            self.estados['selecao_fase'] = SelecaoFase(self.tela, self.LARGURA, self.ALTURA, self.CORES_FASES)
                         elif self.estado_atual == 'game_over':
-                            self.estado_atual = 'menu'
-                            self.estados['menu'] = Menu(self.tela, self.LARGURA, self.ALTURA, self.CORES_FASES[0])
+                            self.estado_atual = 'selecao_fase'
+                            self.estados['selecao_fase'] = SelecaoFase(self.tela, self.LARGURA, self.ALTURA, self.CORES_FASES)
                         elif self.estado_atual == 'selecao_fase':
                             self.estado_atual = 'menu'
                             self.estados['menu'] = Menu(self.tela, self.LARGURA, self.ALTURA, self.CORES_FASES[0])
             
             # Limpar tela
             if self.estado_atual == 'partida' and self.estados['partida'] is not None:
-                fase_atual = self.estados['partida'].fase_atual - 1
-                self.tela.fill(self.CORES_FASES[fase_atual]['fundo'])
+                # Usar cores da fase selecionada
+                fase_index = self.fase_selecionada - 1
+                self.tela.fill(self.CORES_FASES[fase_index]['fundo'])
             elif self.estado_atual == 'selecao_fase' and self.estados['selecao_fase'] is not None:
                 # Fundo neutro para tela de seleção
                 self.tela.fill((20, 25, 40))
+            elif self.estado_atual == 'game_over' and self.estados['game_over'] is not None:
+                # Fundo da fase que estava jogando
+                fase_index = self.fase_selecionada - 1
+                self.tela.fill(self.CORES_FASES[fase_index]['fundo'])
             else:
                 self.tela.fill(self.CORES_FASES[0]['fundo'])
             
@@ -97,7 +102,8 @@ class GeometryRun:
                     self.estados['selecao_fase'] = SelecaoFase(self.tela, self.LARGURA, self.ALTURA, self.CORES_FASES)
                 
                 if self.estado_atual == 'partida' and self.estados['partida'] is None:
-                    self.estados['partida'] = Partida(self.tela, self.LARGURA, self.ALTURA, self.CORES_FASES, self.velocidade_selecionada)
+                    self.estados['partida'] = Partida(self.tela, self.LARGURA, self.ALTURA, 
+                                                     self.CORES_FASES, self.fase_selecionada)
                 
                 # Atualizar estado atual
                 if self.estado_atual in self.estados and self.estados[self.estado_atual] is not None:
@@ -107,15 +113,26 @@ class GeometryRun:
                     if resultado is not None:
                         novo_estado, dados = resultado
                         
-                        # Verificar se há dados de velocidade selecionada
-                        if dados is not None and 'velocidade' in dados:
-                            self.velocidade_selecionada = dados['velocidade']
+                        # Verificar se há dados de fase selecionada
+                        if dados is not None and 'fase' in dados:
+                            self.fase_selecionada = dados['fase']
                         
                         # Atualizar high score se for game over
                         if novo_estado == 'game_over':
                             pontuacao = dados.get('pontuacao', 0)
-                            if pontuacao > self.high_score:
-                                self.high_score = pontuacao
+                            fase = dados.get('fase', 1)
+                            # Separar high score por fase
+                            if fase == 1:
+                                if pontuacao > self.high_score:
+                                    self.high_score = pontuacao
+                            elif fase == 2:
+                                # Para fase 2, high score é diferente
+                                if pontuacao > self.high_score:
+                                    self.high_score = pontuacao
+                            elif fase == 3:
+                                # Para fase 3, high score é diferente
+                                if pontuacao > self.high_score:
+                                    self.high_score = pontuacao
                             dados['high_score'] = self.high_score
                         
                         # Mudar para novo estado
@@ -127,10 +144,12 @@ class GeometryRun:
                             self.estados['partida'] = None
                             self.estados['game_over'] = None
                         elif novo_estado == 'partida':
-                            self.estados['partida'] = Partida(self.tela, self.LARGURA, self.ALTURA, self.CORES_FASES, self.velocidade_selecionada)
+                            self.estados['partida'] = Partida(self.tela, self.LARGURA, self.ALTURA, 
+                                                             self.CORES_FASES, self.fase_selecionada)
                             self.estados['game_over'] = None
                         elif novo_estado == 'game_over':
-                            self.estados['game_over'] = GameOver(self.tela, self.LARGURA, self.ALTURA, self.CORES_FASES[0], dados)
+                            self.estados['game_over'] = GameOver(self.tela, self.LARGURA, self.ALTURA, 
+                                                                self.CORES_FASES[self.fase_selecionada-1], dados)
                             self.estados['partida'] = None
                         elif novo_estado == 'menu':
                             self.estados['menu'] = Menu(self.tela, self.LARGURA, self.ALTURA, self.CORES_FASES[0])
